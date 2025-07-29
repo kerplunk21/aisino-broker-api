@@ -1,6 +1,8 @@
 *.env
 *.zip
 *.sh
+.env.stag
+.env.dev
 node_modules
 node_modules/*
 dockerized/
