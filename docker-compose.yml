@@ -1,0 +1,54 @@
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+      - "8883:8883"
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      PSQL_HOST: postgres
+      PSQL_PORT: 5432
+      PSQL_DATABASE: broker_api_db
+      PSQL_USERNAME: brokerapi
+      PSQL_PASSWORD: br3w3d888
+      TDMURL: ${TDMURL:-https://sbx-switch-be.payconnect.io}
+      KEYSTORE_PASSPHRASE: ${KEYSTORE_PASSPHRASE}
+      CN: ${CN}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-24h}
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
+  redis:
+    image: redis:latest
+    command: redis-server --appendonly yes --requirepass br3w3d888
+    volumes:
+      - "payment-terminal-broker-api_redis-data:/data"
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "br3w3d888", "ping"]
+      interval: 1s
+      timeout: 3s
+      retries: 3
+
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: broker_api_db
+      POSTGRES_USER: brokerapi
+      POSTGRES_PASSWORD: br3w3d888
+    volumes:
+      - payment-terminal-broker-api_postgres-data:/var/lib/postgresql/data
+      - ./init-schema.sql:/docker-entrypoint-initdb.d/01-init-schema.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U brokerapi -d broker_api_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  payment-terminal-broker-api_redis-data:
+  payment-terminal-broker-api_postgres-data:

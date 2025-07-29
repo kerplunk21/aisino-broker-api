@@ -1,0 +1,7 @@
+*.env
+*.zip
+*.sh
+node_modules
+node_modules/*
+dockerized/
+certs/
