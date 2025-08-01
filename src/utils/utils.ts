@@ -54,4 +54,8 @@ export class Utils {
     return `${segment(6)}-${segment(6)}-${segment(2)}`;
   }
 
+  static toSixDigitString(num: number): string {
+    return num.toString().padStart(6, '0');
+  }
+
 }

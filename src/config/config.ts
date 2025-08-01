@@ -22,6 +22,9 @@ const CONFIG: Config = {
   PSQL_PASSWORD: process.env['PSQL_PASSWORD']!,
   JWT_SECRET: process.env['JWT_SECRET']!,
   JWT_EXPIRES_IN: process.env['JWT_EXPIRES_IN']!,
+  VERSION: process.env["VERSION"]!,
+  BRAND_NAME: process.env["BRAND_NAME"]!,
+  TRADE_NAME: process.env["TRADE_NAME"]!
 };
 
 export default CONFIG;

@@ -9,6 +9,7 @@ import { PaymentCheckStatusPayloadSchema, PaymentFakeSuccessPayloadSchema, Payme
 import { TransactionController } from '@/controllers/transactionController';
 import { TerminalController } from '@/controllers/terminalController';
 import { PaymentConfigSchema, TerminalSerialPayloadSchema } from '@/schemas/terminal';
+import { CheckTransactionStatusPayloadSchema } from '../schemas/transaction';
 
 const router = Router();
 
@@ -29,10 +30,11 @@ router.post('/device/list', validatePayloadSchema(DeviceBindedListPayload), Devi
 router.post('/transaction/payment-request', validatePayloadSchema(PaymentTransactionPayloadSchema), TransactionController.processPayment)
 router.post('/transaction/payment-status', validatePayloadSchema(PaymentCheckStatusPayloadSchema), TransactionController.checkPaymentStatus)
 router.post('/transaction/payment-fake-success', validatePayloadSchema(PaymentFakeSuccessPayloadSchema), TransactionController.fakeSuccessPayment)
-
+router.post('/transaction/transaction-status', validatePayloadSchema(CheckTransactionStatusPayloadSchema), TransactionController.checkTransactionStatus)
 
 // Terminal
 router.post('/device/terminal-payment-configuration', validatePayloadSchema(PaymentConfigSchema), TerminalController.updateTerminalConfiguration)
 router.post('/device/get-payment-configuration', validatePayloadSchema(TerminalSerialPayloadSchema), TerminalController.getTerminalConfig)
+router.post('/device/get-working-keys', validatePayloadSchema(TerminalSerialPayloadSchema), TerminalController.getWorkingKeys)
 
 export default router;

@@ -18,6 +18,7 @@ import { QRPHTransaction } from '@/models/qrphtransaction';
 import transactionMonitorService from '@/services/transactionMonitorService';
 import { PaymentConfigSchema } from '@/schemas/terminal';
 import { TerminalController } from '@/controllers/terminalController';
+import { keepAliveService } from '@/services/keepAliveService';
 
 export const setupMQTTHandlers = (): void => {
   // Authentication handler
@@ -64,8 +65,17 @@ export const setupMQTTHandlers = (): void => {
             }
             mqttService.publish(serialNum, TerminalConfigRevision);
           }, 2000)
-        }
 
+          // Start keep alive for the terminal
+          const terminalId = terminalCapabilities.terminalConfig?.terminalId!
+          try {
+            console.log(`Starting keep alive for terminal: ${terminalId} (serial: ${serialNum})`);
+            keepAliveService.stopPeriodicKeepAlive();
+            keepAliveService.startPeriodicKeepAlive(terminalId, 30000)
+          } catch (keepAliveError) {
+            console.error(`Failed to start keep alive for terminal ${terminalId}:`, keepAliveError);
+          }
+        }
       }
       return;
     }

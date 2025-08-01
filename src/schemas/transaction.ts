@@ -115,3 +115,8 @@ export const CardTransactionWithTransactionSchema = TransactionDataSchema.extend
   transaction_status: z.string().optional(),
 });
 
+export const CheckTransactionStatusPayloadSchema = z.object({
+  transaction_id: z.string(),
+  pos_id: z.string(),
+})
+

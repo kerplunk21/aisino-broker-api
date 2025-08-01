@@ -189,6 +189,7 @@ export class APIService {
   ): Promise<StatusCheckResponse> {
     console.log("--check-status--");
     const { terminalId, rrn, paymentId } = params;
+    console.log("params: ",params)
 
     const headers = {
       "Content-Type": "application/json",

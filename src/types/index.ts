@@ -3,7 +3,7 @@ import { AuthenticatePayloadSchema, CreateAuthPayloadSchema } from '@/schemas/au
 import { Request, Response, NextFunction } from 'express';
 import { AuthDataSchema } from "@/schemas/auth";
 import { DeviceBindedListPayload, DeviceBindingPayload, DeviceDataSchema, DeviceFiltersSchema, DeviceUnBindingPayload } from "@/schemas/device";
-import { CardTransactionSchema, CardTransactionWithTransactionSchema, PaymentCheckStatusPayloadSchema, PaymentTransactionPayloadSchema, QRPHTransactionDataSchema, QRPHTransactionWithTransactionSchema, TransactionDataSchema, TransactionFiltersSchema, TransactionSummarySchema, TransactionWithQRPHSchema } from "@/schemas/transaction";
+import { CardTransactionSchema, CardTransactionWithTransactionSchema, CheckTransactionStatusPayloadSchema, PaymentCheckStatusPayloadSchema, PaymentTransactionPayloadSchema, QRPHTransactionDataSchema, QRPHTransactionWithTransactionSchema, TransactionDataSchema, TransactionFiltersSchema, TransactionSummarySchema, TransactionWithQRPHSchema } from "@/schemas/transaction";
 import { CardSchemeSchema, ConfigureCapabilitiesRequestSchema, ConfigureTerminalRequestSchema, CVRequirementsSchema, EMVSchema, MerchantSchema, PaymentConfigSchema, TerminalCapabilitiesSchema, TerminalPropertiesSchema, TransactionLimitsSchema } from "@/schemas/terminal";
 import { AIDListSchema, AIDSchema, CAPKSchema } from '@/schemas/paymentScheme';
 import { TerminalSerialPayloadSchema } from '../schemas/terminal';
@@ -29,6 +29,9 @@ export interface Config {
   PSQL_PASSWORD: string;
   JWT_SECRET: string;
   JWT_EXPIRES_IN: string;
+  VERSION: string;
+  BRAND_NAME: string;
+  TRADE_NAME: string;
 }
 
 // API Request/Response Types
@@ -220,3 +223,7 @@ export type AIDList = z.infer<typeof AIDListSchema>
 export type CAPK = z.infer<typeof CAPKSchema>
 export type PaymentConfig = z.infer<typeof PaymentConfigSchema>
 export type TerminalSerialPayload = z.infer<typeof TerminalSerialPayloadSchema>
+
+
+// Transaction
+export type CheckTransactionStatusPayload = z.infer<typeof CheckTransactionStatusPayloadSchema>

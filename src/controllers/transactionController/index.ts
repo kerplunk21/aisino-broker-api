@@ -1,5 +1,5 @@
 import { Response } from 'express';
-import { TypedRequest, PaymentTransactionPayload, QRRequest, PaymentTransactionCheckStatusPayload, TransactionData } from '@/types';
+import { TypedRequest, PaymentTransactionPayload, QRRequest, PaymentTransactionCheckStatusPayload, TransactionData, CheckTransactionStatusPayload } from '@/types';
 import { sendResponse } from '@/helpers/response';
 import { Device } from '@/models/device';
 import { Utils } from '@/utils/utils';
@@ -13,7 +13,7 @@ import { Transaction } from '@/models/transaction';
 import { QRPHTransaction } from '@/models/qrphtransaction';
 import redisService from '@/services/redisService';
 import { CardTransaction } from '@/models/cardtransaction';
-import { PaymentConfigSchema, TerminalCapabilitiesSchema } from '@/schemas/terminal';
+import { PaymentConfigSchema } from '@/schemas/terminal';
 import { TerminalController } from '../terminalController';
 
 export class TransactionController {
@@ -159,7 +159,7 @@ export class TransactionController {
               amount: qrRequestPayload.totalAmount,
               qrph_string: qrphRes?.qrCodeBody,// || staticQr,
               payment_id: qrphRes?.paymentId,
-              transaction_id: transaction.id
+              transaction_id: transaction.reference_id
             }
           };
 
@@ -401,12 +401,17 @@ export class TransactionController {
           return sendResponse(res, {
             message: "Success check status",
             data: {
-                approval_code: transaction?.payconnect_approval_code || "",
-                payconnect_reference_no: transaction?.payconnect_reference_no || "",
-                payment_id: payload.payment_id,
-                payment_reference_no: payload.payment_reference_no,
-                pan: transaction?.payconnect_pan || "",
-                payment_status: "PAYMENT_SUCCESS"
+              authorization_code: transaction?.payconnect_approval_code || "",
+              payconnect_reference_no: transaction?.payconnect_reference_no || "",
+              payment_id: payload.payment_id,
+              payment_reference_no: payload.payment_reference_no,
+              pan: transaction?.payconnect_pan || "",
+              payment_status: "PAYMENT_SUCCESS",
+              tid: transaction.terminal_id,
+              mid: transaction.merchant_id,
+              batch_no: Utils.toSixDigitString(transaction.batch_no),
+              trace_no: Utils.toSixDigitString(transaction.trace_no),
+              transaction_date: transaction.created_at
             }
           })
         }
@@ -456,12 +461,17 @@ export class TransactionController {
         return sendResponse(res, {
           message: "Success check status",
           data: {
-              approval_code: results?.approvalCode || "",
-              payconnect_reference_no: results?.transactionReferenceNumber || "",
-              payment_id: results?.paymentId || "",
-              payment_reference_no: results?.requestReferenceNumber || "",
-              pan: results?.pan || "",
-              payment_status: results?.paymentStatus || ""
+            authorization_code: results?.approvalCode || "",
+            payconnect_reference_no: results?.transactionReferenceNumber || "",
+            payment_id: results?.paymentId || "",
+            payment_reference_no: results?.requestReferenceNumber || "",
+            pan: results?.pan || "",
+            payment_status: results?.paymentStatus || "",
+            tid: transaction.terminal_id,
+            mid: transaction.merchant_id,
+            batch_no: Utils.toSixDigitString(transaction.batch_no),
+            trace_no: Utils.toSixDigitString(transaction.trace_no),
+            transaction_date: transaction.created_at
           }
         })
       }
@@ -508,6 +518,122 @@ export class TransactionController {
 
         return sendResponse(res, {
           message: "Success fake with transaction_id: "+transaction_id
+        })
+      }
+      catch(error) {
+        console.log("Error in checkPaymentStatus", error)
+        return sendResponse(res, {
+            success: false,
+            message: "Error in check payment status",
+            error: JSON.stringify(error),
+            status_code: 500,
+            code: 5002
+        });
+      }
+    }
+
+
+    static async checkTransactionStatus(req: TypedRequest<CheckTransactionStatusPayload>, res: Response): Promise<Response> {
+      try {
+        const payload = req.body;
+        const transaction = await Transaction.getTransactionInfoByTid(payload.transaction_id)
+
+        if (!transaction) {
+          return sendResponse(res, {
+              success: false,
+              message: "Transaction not found",
+              error: "No data found in given payload",
+              status_code: 400,
+              code: 4002
+          });
+        }
+
+        if (transaction.pos_id != payload.pos_id) {
+          return sendResponse(res, {
+              success: false,
+              message: "Pos and Transaction not match!",
+              error: "Pos ID and Transaction not match!",
+              status_code: 400,
+              code: 4003
+          });
+        }
+
+        if (transaction.status === "completed") {
+          return sendResponse(res, {
+            message: "Success check status",
+            data: {
+              authorization_code: transaction?.payconnect_approval_code || "",
+              payconnect_reference_no: transaction?.payconnect_reference_no || "",
+              payment_id: transaction.payconnect_payment_id,
+              payment_reference_no: transaction.ref_num!,
+              pan: transaction?.payconnect_pan || "",
+              payment_status: "PAYMENT_SUCCESS",
+              tid: transaction.terminal_id,
+              mid: transaction.merchant_id,
+              batch_no: Utils.toSixDigitString(transaction.batch_no),
+              trace_no: Utils.toSixDigitString(transaction.trace_no),
+              transaction_date: transaction.created_at
+            }
+          })
+        }
+
+        // fetch token and terminal config
+        const authRes = await APIService.fetchAuth({
+          serialNo: transaction.terminal_serial_no,
+          brandName: bcrypt.hashSync("Aisino", (bcrypt.genSaltSync(12))),
+          tradeName: bcrypt.hashSync("Vanstone", (bcrypt.genSaltSync(12)))
+        })
+
+        if (!authRes) {
+          return sendResponse(res, {
+              success: false,
+              message: "Payment Request Error",
+              error: "Payconnect Authentication error",
+              status_code: 500,
+              code: 5003
+          });
+        }
+
+        const checkStatusPayload = {
+          terminalId: transaction.terminal_id,
+          rrn: transaction.ref_num,
+          paymentId: transaction.payconnect_payment_id!
+        }
+
+        const results = await APIService.checkStatus(checkStatusPayload, authRes, transaction.terminal_serial_no);
+        console.log("results ",results)
+        if (results?.statusCode && parseInt(results.statusCode) > 300) {
+          return sendResponse(res, {
+            success: false,
+            message: results?.message || "Payment Request Error",
+            status_code: 500,
+            code: 5004
+          });
+        }
+
+        if (results?.paymentStatus === "PAYMENT_SUCCESS") {
+          transaction.payconnect_approval_code = results?.approvalCode || ""
+          transaction.payconnect_reference_no = results?.transactionReferenceNumber || ""
+          transaction.payconnect_pan = results?.pan || ""
+          transaction.status = "completed"
+          await Transaction.update(transaction.id, transaction)
+        }
+
+        return sendResponse(res, {
+          message: "Success check status",
+          data: {
+            authorization_code: results?.approvalCode || "",
+            payconnect_reference_no: results?.transactionReferenceNumber || "",
+            payment_id: results?.paymentId || "",
+            payment_reference_no: results?.requestReferenceNumber || "",
+            pan: results?.pan || "",
+            payment_status: results?.paymentStatus || "",
+            tid: transaction.terminal_id,
+            mid: transaction.merchant_id,
+            batch_no: Utils.toSixDigitString(transaction.batch_no),
+            trace_no: Utils.toSixDigitString(transaction.trace_no),
+            transaction_date: transaction.created_at
+          }
         })
       }
       catch(error) {

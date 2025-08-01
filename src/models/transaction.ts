@@ -226,6 +226,7 @@ export class Transaction extends BaseModel {
     payment_reference_no: string,
     payment_id: string
   ): Promise<{
+    created_at: Date,
     id: string;
     status: 'created' | 'published' | 'terminal_ack' | 'pending' | 'completed' | 'failed' | 'cancelled';
     terminal_serial_no: string;
@@ -233,17 +234,27 @@ export class Transaction extends BaseModel {
     payconnect_reference_no?: string;
     payconnect_pan?: string;
     payconnect_approval_code?: string;
+    reference_id: string;
+    merchant_id: string;
+    batch_no: number;
+    trace_no: number;
   } | undefined> {
 
     const query = `
       SELECT
+        t.created_at,
         t.id,
         t.status,
         t.terminal_serial_no,
         t.payconnect_reference_no,
         t.payconnect_pan,
         t.payconnect_approval_code,
-        t.terminal_id
+        t.terminal_id,
+        t.reference_id,
+        t.merchant_id,
+        q.batch_no,
+        q.trace_no
+
       FROM transactions t
       INNER JOIN qrphtransactions q ON t.id = q.transaction_id
       WHERE q.ref_num = $1
@@ -256,6 +267,7 @@ export class Transaction extends BaseModel {
 
     try {
       const result = await this.query<{
+        created_at: Date,
         id: string;
         status: 'created' | 'published' | 'terminal_ack' | 'pending' | 'completed' | 'failed' | 'cancelled'
         terminal_serial_no: string;
@@ -263,6 +275,80 @@ export class Transaction extends BaseModel {
         payconnect_reference_no?: string;
         payconnect_pan?: string;
         payconnect_approval_code?: string;
+        reference_id: string;
+        merchant_id: string;
+        batch_no: number;
+        trace_no: number;
+      }>(query, values);
+      return result.rows?.at(0);
+    } catch (error: any) {
+      throw new Error(`Failed to get transaction info: ${error.message}`);
+    }
+  }
+
+  static async getTransactionInfoByTid(
+    transaction_id: string
+  ): Promise<{
+    created_at: Date,
+    id: string;
+    status: 'created' | 'published' | 'terminal_ack' | 'pending' | 'completed' | 'failed' | 'cancelled';
+    terminal_serial_no: string;
+    terminal_id: string,
+    payconnect_reference_no?: string;
+    payconnect_payment_id?: string;
+    payconnect_pan?: string;
+    payconnect_approval_code?: string;
+    reference_id: string;
+    merchant_id: string;
+    pos_id: string;
+    batch_no: number;
+    trace_no: number;
+    ref_num: string;
+  } | undefined> {
+
+    const query = `
+      SELECT
+        t.created_at,
+        t.id,
+        t.status,
+        t.terminal_serial_no,
+        t.payconnect_reference_no,
+        t.payconnect_pan,
+        t.payconnect_approval_code,
+        t.payconnect_payment_id,
+        t.terminal_id,
+        t.reference_id,
+        t.merchant_id,
+        t.pos_id,
+        q.batch_no,
+        q.trace_no,
+        q.ref_num
+
+      FROM transactions t
+      INNER JOIN qrphtransactions q ON t.id = q.transaction_id
+      WHERE t.reference_id = $1
+      ORDER BY t.created_at DESC
+      LIMIT 1
+    `;
+
+    const values = [transaction_id];
+    try {
+      const result = await this.query<{
+        created_at: Date,
+        id: string;
+        status: 'created' | 'published' | 'terminal_ack' | 'pending' | 'completed' | 'failed' | 'cancelled'
+        terminal_serial_no: string;
+        terminal_id: string,
+        payconnect_reference_no?: string;
+        payconnect_pan?: string;
+        payconnect_approval_code?: string;
+        payconnect_payment_id?: string;
+        reference_id: string;
+        merchant_id: string;
+        pos_id: string;
+        batch_no: number;
+        trace_no: number;
+        ref_num: string;
       }>(query, values);
       return result.rows?.at(0);
     } catch (error: any) {

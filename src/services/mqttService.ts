@@ -93,7 +93,7 @@ export class MQTTService {
         refnum: data.refnum
       }
     };
-    this.publish("00078000334", response);
+    this.publish(data.serial, response);
   }
 
   sendCardPending(data: any): void {
